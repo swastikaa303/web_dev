@@ -1,6 +1,25 @@
-const API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-  ? "http://localhost:3000/todos" // local server
-  : "/api/todos"; // production (Vercel rewrites)
+// public/script.js - loads API URL from config.json (falls back for local dev)
+let API_URL = null;
+
+async function loadConfig() {
+  try {
+    const res = await fetch("config.json", { cache: "no-cache" });
+    if (res.ok) {
+      const cfg = await res.json();
+      if (cfg && cfg.apiUrl) {
+        API_URL = cfg.apiUrl;
+        return;
+      }
+    }
+  } catch (err) {
+    // ignore, fallback below
+  }
+
+  // Fallback: local dev uses localhost, otherwise keep the original Vercel-style path
+  API_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "http://localhost:3000/todos"
+    : "/api/todos";
+}
 
 async function loadTodos() {
   const res = await fetch(API_URL);
@@ -41,4 +60,7 @@ document.getElementById("todoInput").addEventListener("keypress", e => {
   if (e.key === "Enter") addTodo();
 });
 
-loadTodos(); // initial load
+// Initialize: load config, then load todos
+loadConfig().then(loadTodos).catch(err => {
+  console.error("Failed to load config or todos:", err);
+});
